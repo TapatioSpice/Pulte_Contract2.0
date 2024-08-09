@@ -92,3 +92,120 @@ st.markdown(
         }
     </style>
     """, unsafe_allow_html=True
+)
+Explanation:
+Secret Button:
+
+The button with the key hidden_button is positioned at the bottom of the page. It has no visible text, border, or color. When clicked, it automatically sets the entered_password to the correct password.
+The CSS ensures that the button is hidden from view.
+Type-Ahead for Community:
+
+The selectbox for the community now includes a help tooltip indicating that users can start typing to filter the options. The selectbox by default allows type-ahead filtering, so no additional code was required for this feature.
+
+
+
+
+File "/mount/src/pulte_contract2.0/2.0Version.py", line 81
+  st.markdown(
+             ^
+SyntaxError: '(' was never closed
+ChatGPT
+It seems there's a syntax error due to an unclosed parenthesis in the code. Here's the corrected version:
+
+python
+Copy code
+import streamlit as st
+import openpyxl
+import pandas as pd
+
+# Specify the GitHub raw content link to the Excel file
+GITHUB_EXCEL_LINK = "https://raw.githubusercontent.com/TapatioSpice/PulteContracts/main/PulteContracts1.xlsx"
+
+# Predefined password
+PASSWORD = "landscape12"
+
+def load_data():
+    try:
+        # Read the Excel file directly from the GitHub raw content link
+        data = pd.read_excel(GITHUB_EXCEL_LINK)
+        return data
+    except Exception as e:
+        st.error(f"Error loading data: {str(e)}")
+        st.stop()
+
+# Function to filter data based on community and series
+def filter_data(data, community, series):
+    return data[(data['Community'] == community) & (data['Series'] == series)]
+
+# Function to create the table and display it
+def show_table(data):
+    data = data.sort_values(by='Work Type')
+
+    # Round the values to 2 decimal places
+    data['Amount'] = data['Amount'].round(2)
+
+    table_data = pd.pivot_table(data, values='Amount', index='Work Type', columns='Plan', aggfunc='sum', fill_value=0)
+    table_data.reset_index(inplace=True)
+
+    # Format values in the DataFrame to display with 2 decimal places
+    formatted_table_data = table_data.applymap(lambda x: f"{x:,.2f}" if isinstance(x, (float, int)) else x)
+
+    st.table(formatted_table_data)
+
+# Footer
+footer = """
+---
+
+*Created and upkept by Alejandro Escutia | Copyright © 2024*
+"""
+
+# Password protection at the bottom
+password_input = st.text_input("Enter password:", type="password")
+entered_password = password_input.lower()  # Convert to lowercase for case-insensitive comparison
+
+# Secret button to automatically fill in the password
+if st.button("", key="hidden_button"):
+    entered_password = PASSWORD
+
+# Title
+st.title("Pulte Contracts")
+
+if entered_password == PASSWORD:
+    # Display the GUI components only if the password is correct
+    communities = load_data()['Community'].unique()
+    selected_community = st.selectbox('Select Community:', communities, key="community_select", help="You can start typing to narrow down the options.")
+
+    series_options = load_data()[load_data()['Community'] == selected_community]['Series'].unique()
+    selected_series = st.selectbox('Select Series:', series_options, key="series_select")
+
+    if st.button('Create Table'):
+        try:
+            if selected_community and selected_series:
+                filtered_data = filter_data(load_data(), selected_community, selected_series)
+                show_table(filtered_data)
+
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+else:
+    # Display a warning if the password is incorrect
+    st.warning("Incorrect password. Please enter the correct password to proceed.")
+
+# Add the footer
+st.markdown(footer)
+
+# Additional CSS to hide the button
+st.markdown(
+    """
+    <style>
+    #hidden_button { 
+        background-color: transparent; 
+        border: none; 
+        color: transparent;
+        width: 1px;
+        height: 1px;
+        position: fixed;
+        bottom: 0;
+        }
+    </style>
+    """, unsafe_allow_html=True
+)
