@@ -47,17 +47,13 @@ footer = """
 password_input = st.text_input("Enter password:", type="password")
 entered_password = password_input.lower()  # Convert to lowercase for case-insensitive comparison
 
-# Secret button to automatically fill in the password
-if st.button("", key="hidden_button"):
-    entered_password = PASSWORD
-
 # Title
 st.title("Pulte Contracts")
 
 if entered_password == PASSWORD:
     # Display the GUI components only if the password is correct
     communities = load_data()['Community'].unique()
-    selected_community = st.selectbox('Select Community:', communities, key="community_select", help="You can start typing to narrow down the options.")
+    selected_community = st.selectbox('Select Community:', communities, key="community_select", help="You can start typing to narrow down the options.", index=0)
 
     series_options = load_data()[load_data()['Community'] == selected_community]['Series'].unique()
     selected_series = st.selectbox('Select Series:', series_options, key="series_select")
@@ -76,20 +72,3 @@ else:
 
 # Add the footer
 st.markdown(footer)
-
-# Additional CSS to hide the button
-st.markdown(
-    """
-    <style>
-    #hidden_button { 
-        background-color: transparent; 
-        border: none; 
-        color: transparent;
-        width: 1px;
-        height: 1px;
-        position: fixed;
-        bottom: 0;
-        }
-    </style>
-    """, unsafe_allow_html=True
-)
