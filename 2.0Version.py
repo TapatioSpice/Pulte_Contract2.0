@@ -53,19 +53,36 @@ st.title("Pulte Contracts")
 if entered_password == PASSWORD:
     # Display the GUI components only if the password is correct
     communities = load_data()['Community'].unique()
-    selected_community = st.selectbox('Select Community:', communities, key="community_select", help="You can start typing to narrow down the options.", index=0)
 
-    series_options = load_data()[load_data()['Community'] == selected_community]['Series'].unique()
-    selected_series = st.selectbox('Select Series:', series_options, key="series_select")
+    # Custom text input with filtering
+    typed_community = st.text_input('Type Community:', '')
 
-    if st.button('Create Table'):
-        try:
-            if selected_community and selected_series:
+    filtered_communities = [community for community in communities if typed_community.lower() in community.lower()]
+
+    if len(filtered_communities) == 1:
+        selected_community = filtered_communities[0]
+    else:
+        selected_community = st.selectbox('Select Community:', filtered_communities, key="community_select")
+
+    if selected_community:
+        series_options = load_data()[load_data()['Community'] == selected_community]['Series'].unique()
+
+        # Custom text input with filtering
+        typed_series = st.text_input('Type Series:', '')
+
+        filtered_series = [series for series in series_options if typed_series.lower() in series.lower()]
+
+        if len(filtered_series) == 1:
+            selected_series = filtered_series[0]
+        else:
+            selected_series = st.selectbox('Select Series:', filtered_series, key="series_select")
+
+        if selected_series and st.button('Create Table'):
+            try:
                 filtered_data = filter_data(load_data(), selected_community, selected_series)
                 show_table(filtered_data)
-
-        except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
+            except Exception as e:
+                st.error(f"An error occurred: {str(e)}")
 else:
     # Display a warning if the password is incorrect
     st.warning("Incorrect password. Please enter the correct password to proceed.")
