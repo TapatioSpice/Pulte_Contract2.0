@@ -67,6 +67,9 @@ if entered_password == PASSWORD:
     if selected_community:
         series_options = load_data()[load_data()['Community'] == selected_community]['Series'].unique()
 
+        # Ensure series_options are strings before filtering
+        series_options = series_options.astype(str)
+
         # Custom text input with filtering
         typed_series = st.text_input('Type Series:', '')
 
