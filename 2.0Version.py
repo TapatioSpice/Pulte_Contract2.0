@@ -5,9 +5,6 @@ import pandas as pd
 # Specify the GitHub raw content link to the Excel file
 GITHUB_EXCEL_LINK = "https://raw.githubusercontent.com/TapatioSpice/PulteContracts/main/PulteContracts1.xlsx"
 
-# Predefined password
-PASSWORD = "landscape12"
-
 def load_data():
     try:
         # Read the Excel file directly from the GitHub raw content link
@@ -43,32 +40,24 @@ footer = """
 *Created and upkept by Alejandro Escutia | Copyright © 2024*
 """
 
-# Password protection at the bottom
-password_input = st.text_input("Enter password:", type="password")
-entered_password = password_input.lower()  # Convert to lowercase for case-insensitive comparison
-
 # Title
 st.title("Pulte Contracts")
 
-if entered_password == PASSWORD:
-    # Display the GUI components only if the password is correct
-    communities = load_data()['Community'].unique()
-    selected_community = st.selectbox('Select Community:', communities, key="community_select", help="You can start typing to narrow down the options.", index=0)
+# Display the GUI components
+communities = load_data()['Community'].unique()
+selected_community = st.selectbox('Select Community:', communities, key="community_select", help="You can start typing to narrow down the options.", index=0)
 
-    series_options = load_data()[load_data()['Community'] == selected_community]['Series'].unique()
-    selected_series = st.selectbox('Select Series:', series_options, key="series_select")
+series_options = load_data()[load_data()['Community'] == selected_community]['Series'].unique()
+selected_series = st.selectbox('Select Series:', series_options, key="series_select")
 
-    if st.button('Create Table'):
-        try:
-            if selected_community and selected_series:
-                filtered_data = filter_data(load_data(), selected_community, selected_series)
-                show_table(filtered_data)
+if st.button('Create Table'):
+    try:
+        if selected_community and selected_series:
+            filtered_data = filter_data(load_data(), selected_community, selected_series)
+            show_table(filtered_data)
 
-        except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
-else:
-    # Display a warning if the password is incorrect
-    st.warning("Incorrect password. Please enter the correct password to proceed.")
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
 
 # Add the footer
 st.markdown(footer)
