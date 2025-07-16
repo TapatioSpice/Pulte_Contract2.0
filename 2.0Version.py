@@ -2,10 +2,10 @@ import streamlit as st
 import openpyxl
 import pandas as pd
 
-# Excel file from GitHub
+# Excel file URL
 GITHUB_EXCEL_LINK = "https://raw.githubusercontent.com/TapatioSpice/PulteContracts/main/PulteContracts1.xlsx"
 
-# Load data
+# Load Excel data
 @st.cache_data
 def load_data():
     try:
@@ -15,7 +15,7 @@ def load_data():
         st.error(f"Error loading data: {str(e)}")
         st.stop()
 
-# Filter data
+# Filter data by all 3 criteria
 def filter_data(data, community, series, scar_date):
     return data[
         (data['Community'] == community) &
@@ -23,10 +23,15 @@ def filter_data(data, community, series, scar_date):
         (data['Scar.Date'] == scar_date)
     ]
 
-# Show pivot table
+# Display pivot table with priority rows on top
 def show_table(data):
-    data = data.sort_values(by='Work Type')
+    # Work types to prioritize
+    priority_list = ['RG', 'PV', 'FG', 'LS']
+
+    # Round Amount column
     data['Amount'] = data['Amount'].round(2)
+
+    # Create pivot table
     table_data = pd.pivot_table(
         data,
         values='Amount',
@@ -34,47 +39,58 @@ def show_table(data):
         columns='Plan',
         aggfunc='sum',
         fill_value=0
+    ).reset_index()
+
+    # Add priority flag
+    table_data['priority'] = table_data['Work Type'].apply(
+        lambda x: 0 if str(x).strip() in priority_list else 1
     )
-    table_data.reset_index(inplace=True)
-    formatted_table_data = table_data.applymap(
+
+    # Sort with priority types first, then alphabetically
+    table_data = table_data.sort_values(by=['priority', 'Work Type']).drop(columns='priority')
+
+    # Format numbers
+    formatted_table = table_data.applymap(
         lambda x: f"{x:,.2f}" if isinstance(x, (float, int)) else x
     )
-    st.table(formatted_table_data)
 
-# Start the app
+    st.table(formatted_table)
+
+# Main app
 st.title("Pulte Contracts")
 
 data = load_data()
 
-# Parse dates if needed
+# Check that necessary column exists
 if 'Scar.Date' not in data.columns:
     st.error("Column 'Scar.Date' not found in data.")
     st.stop()
+
+# Convert Scar.Date to datetime
 data['Scar.Date'] = pd.to_datetime(data['Scar.Date'])
 
-# --- Step 1: Community dropdown ---
+# Step 1: Select Community
 communities = data['Community'].dropna().unique()
 selected_community = st.selectbox(
     'Select Community:',
     communities,
-    key="community_select",
     help="You can start typing to narrow down the options."
 )
 
-# --- Step 2: Series dropdown (only if community is selected) ---
+# Step 2: Select Series
 if selected_community:
     series_options = data[data['Community'] == selected_community]['Series'].dropna().unique()
-    selected_series = st.selectbox('Select Series:', series_options, key="series_select")
+    selected_series = st.selectbox('Select Series:', series_options)
 else:
     selected_series = None
 
-# --- Step 3: Scar.Date dropdown (only if community and series are selected) ---
+# Step 3: Select Scar.Date (after both previous selections)
 if selected_community and selected_series:
-    date_filtered = data[
+    filtered_for_dates = data[
         (data['Community'] == selected_community) &
         (data['Series'] == selected_series)
     ]
-    scar_dates = sorted(date_filtered['Scar.Date'].dropna().unique(), reverse=True)
+    scar_dates = sorted(filtered_for_dates['Scar.Date'].dropna().unique(), reverse=True)
 
     if scar_dates:
         selected_scar_date = st.selectbox(
@@ -84,24 +100,24 @@ if selected_community and selected_series:
             format_func=lambda x: x.strftime('%Y-%m-%d')
         )
     else:
-        st.warning("No Scar Dates found for this community and series.")
+        st.warning("No Scar Dates available for the selected Community and Series.")
         selected_scar_date = None
 else:
     selected_scar_date = None
 
-# --- Create Table Button ---
+# Button to generate table
 if st.button('Create Table'):
     if selected_community and selected_series and selected_scar_date:
         try:
             filtered_data = filter_data(data, selected_community, selected_series, selected_scar_date)
             if filtered_data.empty:
-                st.warning("No data available for selected filters.")
+                st.warning("No data found for your selection.")
             else:
                 show_table(filtered_data)
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
     else:
-        st.warning("Please select Community, Series, and Scar Start Date first.")
+        st.warning("Please make sure all three selections are made.")
 
 # Footer
 st.markdown("""
