@@ -41,33 +41,19 @@ def show_table(data):
     )
     st.table(formatted_table_data)
 
-# App starts here
+# Start the app
 st.title("Pulte Contracts")
 
 data = load_data()
 
-# Ensure date column exists and is parsed as datetime
+# Parse dates if needed
 if 'Scar.Date' not in data.columns:
     st.error("Column 'Scar.Date' not found in data.")
     st.stop()
-
 data['Scar.Date'] = pd.to_datetime(data['Scar.Date'])
-scar_dates = sorted(data['Scar.Date'].dropna().unique(), reverse=True)
-default_date = scar_dates[0] if scar_dates else None
 
-# Scar date dropdown
-selected_scar_date = st.selectbox(
-    "Select Scar Start Date:",
-    scar_dates,
-    index=0,
-    format_func=lambda x: x.strftime('%Y-%m-%d')
-)
-
-# Filter options based on selected scar date
-filtered_by_date = data[data['Scar.Date'] == selected_scar_date]
-
-# Community dropdown
-communities = filtered_by_date['Community'].dropna().unique()
+# --- Step 1: Community dropdown ---
+communities = data['Community'].dropna().unique()
 selected_community = st.selectbox(
     'Select Community:',
     communities,
@@ -75,21 +61,47 @@ selected_community = st.selectbox(
     help="You can start typing to narrow down the options."
 )
 
-# Series dropdown
-series_options = filtered_by_date[
-    filtered_by_date['Community'] == selected_community
-]['Series'].dropna().unique()
+# --- Step 2: Series dropdown (only if community is selected) ---
+if selected_community:
+    series_options = data[data['Community'] == selected_community]['Series'].dropna().unique()
+    selected_series = st.selectbox('Select Series:', series_options, key="series_select")
+else:
+    selected_series = None
 
-selected_series = st.selectbox('Select Series:', series_options, key="series_select")
+# --- Step 3: Scar.Date dropdown (only if community and series are selected) ---
+if selected_community and selected_series:
+    date_filtered = data[
+        (data['Community'] == selected_community) &
+        (data['Series'] == selected_series)
+    ]
+    scar_dates = sorted(date_filtered['Scar.Date'].dropna().unique(), reverse=True)
 
-# Create table button
+    if scar_dates:
+        selected_scar_date = st.selectbox(
+            "Select Scar Start Date:",
+            scar_dates,
+            index=0,
+            format_func=lambda x: x.strftime('%Y-%m-%d')
+        )
+    else:
+        st.warning("No Scar Dates found for this community and series.")
+        selected_scar_date = None
+else:
+    selected_scar_date = None
+
+# --- Create Table Button ---
 if st.button('Create Table'):
-    try:
-        if selected_community and selected_series and selected_scar_date:
+    if selected_community and selected_series and selected_scar_date:
+        try:
             filtered_data = filter_data(data, selected_community, selected_series, selected_scar_date)
-            show_table(filtered_data)
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
+            if filtered_data.empty:
+                st.warning("No data available for selected filters.")
+            else:
+                show_table(filtered_data)
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+    else:
+        st.warning("Please select Community, Series, and Scar Start Date first.")
 
 # Footer
 st.markdown("""
