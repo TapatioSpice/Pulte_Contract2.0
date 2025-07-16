@@ -20,7 +20,7 @@ def filter_data(data, community, series, scar_date):
     return data[
         (data['Community'] == community) &
         (data['Series'] == series) &
-        (data['Scar Start Date'] == scar_date)
+        (data['Scar.Date'] == scar_date)
     ]
 
 # Show pivot table
@@ -46,34 +46,43 @@ st.title("Pulte Contracts")
 
 data = load_data()
 
-# Scar Start Date selection with newest as default
-if 'Scar Start Date' not in data.columns:
-    st.error("Column 'Scar Start Date' not found in data.")
+# Ensure date column exists and is parsed as datetime
+if 'Scar.Date' not in data.columns:
+    st.error("Column 'Scar.Date' not found in data.")
     st.stop()
 
-data['Scar Start Date'] = pd.to_datetime(data['Scar Start Date'])
-scar_dates = sorted(data['Scar Start Date'].unique(), reverse=True)
+data['Scar.Date'] = pd.to_datetime(data['Scar.Date'])
+scar_dates = sorted(data['Scar.Date'].dropna().unique(), reverse=True)
 default_date = scar_dates[0] if scar_dates else None
-selected_scar_date = st.selectbox("Select Scar Start Date:", scar_dates, index=0, format_func=lambda x: x.strftime('%Y-%m-%d'))
 
-# Community selection
-communities = data[data['Scar Start Date'] == selected_scar_date]['Community'].unique()
+# Scar date dropdown
+selected_scar_date = st.selectbox(
+    "Select Scar Start Date:",
+    scar_dates,
+    index=0,
+    format_func=lambda x: x.strftime('%Y-%m-%d')
+)
+
+# Filter options based on selected scar date
+filtered_by_date = data[data['Scar.Date'] == selected_scar_date]
+
+# Community dropdown
+communities = filtered_by_date['Community'].dropna().unique()
 selected_community = st.selectbox(
     'Select Community:',
     communities,
     key="community_select",
-    help="You can start typing to narrow down the options.",
+    help="You can start typing to narrow down the options."
 )
 
-# Series selection based on community + date
-series_options = data[
-    (data['Scar Start Date'] == selected_scar_date) &
-    (data['Community'] == selected_community)
-]['Series'].unique()
+# Series dropdown
+series_options = filtered_by_date[
+    filtered_by_date['Community'] == selected_community
+]['Series'].dropna().unique()
 
 selected_series = st.selectbox('Select Series:', series_options, key="series_select")
 
-# Generate table
+# Create table button
 if st.button('Create Table'):
     try:
         if selected_community and selected_series and selected_scar_date:
