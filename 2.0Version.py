@@ -372,10 +372,6 @@ def show_contracts_home():
         ):
             go_to_page("concrete_builders")
 
-    st.markdown(
-        '<div class="division-note">Production and Concrete are kept separate so each builder can have its own contract database.</div>',
-        unsafe_allow_html=True,
-    )
 
 
 # -----------------------------
@@ -434,9 +430,6 @@ def show_builder_home(division):
     with row3[1]:
         builder_button("Tri Pointe of Nevada", division)
 
-    st.caption(
-        "Pulte is active now. The other builder pages are ready for future contract files."
-    )
 
 
 # -----------------------------
