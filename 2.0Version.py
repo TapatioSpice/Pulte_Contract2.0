@@ -69,6 +69,7 @@ BUILDER_SLUGS = {
 BUILDER_FILES = {
     "Pulte": "PulteContracts1.xlsx",
     "Woodside": "WoodsideContracts1.xlsx",
+    "Richmond": "RichmondContracts1.xlsx",
 }
 
 ACTIVE_BUILDERS = set(BUILDER_FILES)
@@ -239,7 +240,8 @@ def work_type_priority(value):
     if value.startswith("FND-"): return 2
     if value == "Haul Off": return 10
     if value == "RG": return 20
-    if value == "RG2": return 21
+    if value.startswith("RG-"): return 21
+    if value == "RG2": return 22
     if value == "FG2": return 30
     if value == "FG": return 31
     if value == "LS": return 40
