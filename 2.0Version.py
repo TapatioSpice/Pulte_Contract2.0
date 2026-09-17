@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
+from io import BytesIO
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 st.set_page_config(page_title="Contracts", page_icon="📄", layout="wide")
 
@@ -100,41 +103,91 @@ EXPECTED_PULTE_CONCRETE = {
 }
 
 
-CONTRACT_FOLDER_NAME = "Contract Files"
+GITHUB_OWNER = "TapatioSpice"
+CONTRACT_REPO = "Contract-Files"
+CONTRACT_BRANCHES = ("main", "master")
 
 
 def contract_file_candidates(filename):
-    """Return local repo paths in preferred order.
+    """Local fallbacks for desktop/local testing.
 
-    The intended GitHub layout is:
-        /Alpha Contracts/<this app file>
-        /Contract Files/<builder workbooks>
-
-    A few fallback locations are kept so local testing still works while files
-    are being moved around in GitHub.
+    Streamlit Community Cloud clones only the Alpha-Contracts repository, so a
+    separate Contract-Files repository is NOT available as a sibling folder.
+    These paths are therefore only fallbacks for local testing.
     """
     return [
-        BASE_DIR.parent / CONTRACT_FOLDER_NAME / filename,
-        BASE_DIR / CONTRACT_FOLDER_NAME / filename,
-        BASE_DIR.parent / "PulteContracts" / filename,
-        BASE_DIR / "PulteContracts" / filename,
         BASE_DIR / filename,
+        BASE_DIR / "Contract-Files" / filename,
+        BASE_DIR.parent / "Contract-Files" / filename,
     ]
+
+
+def github_token():
+    """Optional token for a private Contract-Files repository."""
+    try:
+        return st.secrets.get("GITHUB_TOKEN")
+    except Exception:
+        return None
+
+
+def download_contract_file(filename):
+    """Download one workbook from the separate Contract-Files GitHub repo.
+
+    Public repos work without a token. If Contract-Files is private, add a
+    GITHUB_TOKEN secret in Streamlit with read access to that repository.
+    """
+    token = github_token()
+    errors = []
+
+    for branch in CONTRACT_BRANCHES:
+        url = (
+            f"https://raw.githubusercontent.com/{GITHUB_OWNER}/"
+            f"{CONTRACT_REPO}/{branch}/{filename}"
+        )
+        headers = {"User-Agent": "Alpha-Contracts-Streamlit"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+
+        request = Request(url, headers=headers)
+        try:
+            with urlopen(request, timeout=20) as response:
+                return BytesIO(response.read()), url
+        except HTTPError as exc:
+            errors.append(f"{branch}: HTTP {exc.code}")
+        except URLError as exc:
+            errors.append(f"{branch}: {exc.reason}")
+        except Exception as exc:
+            errors.append(f"{branch}: {exc}")
+
+    raise FileNotFoundError(
+        f"Could not download {filename} from {GITHUB_OWNER}/{CONTRACT_REPO}. "
+        + " | ".join(errors)
+    )
 
 
 @st.cache_data(ttl=300)
 def load_builder_data(builder_name):
     filename = BUILDER_FILES[builder_name]
+
+    # Local file first (useful when testing on your computer).
     local_path = next((path for path in contract_file_candidates(filename) if path.exists()), None)
 
-    if local_path is None:
-        st.error(f"Unable to find {filename} in the Contract Files folder.")
-        st.stop()
-
     try:
-        data = pd.read_excel(local_path)
+        if local_path is not None:
+            data = pd.read_excel(local_path)
+        else:
+            remote_file, remote_url = download_contract_file(filename)
+            data = pd.read_excel(remote_file)
     except Exception as exc:
-        st.error(f"Unable to load the {builder_name} contract file: {exc}")
+        st.error(
+            f"Unable to load {filename} from the Contract-Files GitHub repository. "
+            f"Make sure the file is in the root of TapatioSpice/Contract-Files and is named exactly {filename}."
+        )
+        st.caption(
+            "If Contract-Files is private, add GITHUB_TOKEN in Streamlit → App settings → Secrets "
+            "with read access to that repository."
+        )
+        st.code(str(exc))
         st.stop()
 
     missing = [column for column in REQUIRED_COLUMNS if column not in data.columns]
