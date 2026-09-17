@@ -41,8 +41,6 @@ st.markdown(
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-GITHUB_BASE = "https://raw.githubusercontent.com/TapatioSpice/PulteContracts/main"
-
 REQUIRED_COLUMNS = ["Community", "Series", "Scar.Date", "Plan", "Work Type", "Amount"]
 
 BUILDER_ORDER = [
@@ -102,17 +100,39 @@ EXPECTED_PULTE_CONCRETE = {
 }
 
 
+CONTRACT_FOLDER_NAME = "Contract Files"
+
+
+def contract_file_candidates(filename):
+    """Return local repo paths in preferred order.
+
+    The intended GitHub layout is:
+        /Alpha Contracts/<this app file>
+        /Contract Files/<builder workbooks>
+
+    A few fallback locations are kept so local testing still works while files
+    are being moved around in GitHub.
+    """
+    return [
+        BASE_DIR.parent / CONTRACT_FOLDER_NAME / filename,
+        BASE_DIR / CONTRACT_FOLDER_NAME / filename,
+        BASE_DIR.parent / "PulteContracts" / filename,
+        BASE_DIR / "PulteContracts" / filename,
+        BASE_DIR / filename,
+    ]
+
+
 @st.cache_data(ttl=300)
 def load_builder_data(builder_name):
     filename = BUILDER_FILES[builder_name]
-    local_path = BASE_DIR / filename
-    github_link = f"{GITHUB_BASE}/{filename}"
+    local_path = next((path for path in contract_file_candidates(filename) if path.exists()), None)
+
+    if local_path is None:
+        st.error(f"Unable to find {filename} in the Contract Files folder.")
+        st.stop()
 
     try:
-        if local_path.exists():
-            data = pd.read_excel(local_path)
-        else:
-            data = pd.read_excel(github_link)
+        data = pd.read_excel(local_path)
     except Exception as exc:
         st.error(f"Unable to load the {builder_name} contract file: {exc}")
         st.stop()
@@ -175,8 +195,6 @@ def work_type_priority(value):
     if value == "Pavers": return 50
     if value.startswith("Pavers-"): return 51
     if value.startswith("PVO-"): return 52
-    if value.startswith("GARCOAT"): return 60
-    if value.startswith("POOL"): return 70
     return 100
 
 
