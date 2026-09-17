@@ -170,6 +170,7 @@ def work_type_priority(value):
     if value == "FG2": return 30
     if value == "FG": return 31
     if value == "LS": return 40
+    if value == "Landscape": return 40
     if value.startswith("LSO-"): return 41
     if value == "Pavers": return 50
     if value.startswith("Pavers-"): return 51
