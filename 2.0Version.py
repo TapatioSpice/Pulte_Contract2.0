@@ -70,6 +70,7 @@ BUILDER_FILES = {
     "Pulte": "PulteContracts1.xlsx",
     "Woodside": "WoodsideContracts1.xlsx",
     "Richmond": "RichmondContracts1.xlsx",
+    "KB Homes": "KBHomesContracts1.xlsx",
 }
 
 ACTIVE_BUILDERS = set(BUILDER_FILES)
